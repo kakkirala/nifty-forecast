@@ -1,33 +1,31 @@
-# Nifty 50 Forecasting — An Honest Backtest
+# NSE Stock Market LoRA Fine-Tune â€” An Honest Report
 
-Can past Nifty 50 prices predict tomorrow? I built the full pipeline and let the data answer.
+Fine-tuned Qwen2.5-0.5B-Instruct on NSE stock data using Unsloth LoRA.
+Honest result: the model learned the answer *format*, not the *facts*.
 
 ## What I built
-- Loaded 8,720 trading days of Nifty 50 OHLC data (1990–2026)
-- Feature engineering: 5/10-day moving averages, daily % change, trading range, volatility
-- Chronological train/test split (train on old data, test on recent — never shuffled)
-- Random Forest baselines for three tasks
+- Dataset: 200 Q&A pairs from NSE daily stock data (2016â€“2017, Kaggle)
+- Three question types: closing price, high/low, traded quantity
+- Training: Unsloth LoRA on Qwen2.5-0.5B-Instruct, 3 epochs, 60 steps
+- Loss: 1.64 â†’ 0.42 (8.8M trainable params, 1.75% of the model)
+- Exported to GGUF (q8_0), served locally via Ollama as `nse-tuned`
 
-## Honest results
-| Task | Model | Naive baseline | Verdict |
-|------|-------|----------------|---------|
-| Predict tomorrow's price | MAE 6,737 pts (37%) | — | ? Failed — trees can't extrapolate beyond training range |
-| Predict tomorrow's % move | MAE 0.803% | 0.743% (always predict 0%) | ? No edge over naive |
-| Predict up/down | 51.2% accuracy | 54.3% (always predict "up") | ? No edge over naive |
+## Honest result
+Asked "What was 3MINDIA's close on 2017-06-28?", the model answered confidently â€”
+and got the number completely wrong. Format perfect, facts invented.
 
-## Why it failed (the real lesson)
-1. **Trees can't extrapolate.** Trained on Nifty 300–11,000, tested on 12,000–24,000.
-2. **Daily moves are mostly noise.** Past prices carry almost no signal — that is market efficiency.
-3. **The market drifts upward**, so "always predict up" is a brutally strong baseline.
+## Why: the Qwen 0.5B point
+**500M parameters isn't enough for factual memorization.** With 200 examples, a 0.5B
+model learns the *style* of answers ("X closed at Y on Z") but cannot retain exact
+numbers. Memorization needs bigger models and far more data. The tuning worked â€”
+the model is just too small for the job.
 
 ## Takeaway
-The market is efficient at the daily scale — past prices alone don't predict tomorrow.
-The value of this project is the honest pipeline: real features, correct time-series
-validation, and refusing to fake good numbers.
+LoRA fine-tuning teaches behavior, not knowledge â€” especially at small scale.
+The pipeline (data prep â†’ training â†’ GGUF export â†’ Ollama serving) works end to end.
+The lesson is knowing what fine-tuning can and cannot do.
 
-## Run it
-1. Download the daily file (`NIFTY 50_day.csv`) from the [Nifty 50 minute-data Kaggle dataset](https://www.kaggle.com/datasets/debashis74017/nifty-50-minute-data)
-2. Open `nifty-forecast.ipynb` in Colab and run all cells
+**Bottom line: the tuning worked, the 0.5B model is too small to memorize facts.**
 
 ## Stack
-Python, pandas, scikit-learn (RandomForest), Colab
+Python, Unsloth, Qwen2.5-0.5B-Instruct, Ollama, Colab (T4)
